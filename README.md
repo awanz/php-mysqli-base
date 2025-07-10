@@ -1,5 +1,6 @@
 # PHP MySQLi Base
-![GitHub followers](https://img.shields.io/github/followers/awanz?style=social)
+[![GitHub followers](https://img.shields.io/github/followers/awanz?style=social)](https://github.com/awanz)
+
 
 ## About
 
