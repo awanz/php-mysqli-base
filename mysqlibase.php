@@ -9,18 +9,44 @@
         protected $connection;
         public $hostinfo;
 
-        public function __construct($hostname, $database, $username, $password) {
+        public function __construct($hostname = "localhost", $database = "", $username = "", $password = null) {
             $this->connection = new mysqli($hostname, $username, $password, $database);
             if ($this->connection->connect_errno) {
                 echo "Failed to connect to MySQL: (" . $this->connection->connect_errno . ") " . $this->connection->connect_error;
             }
-            $this->hostinfo = $this->connection->host_info ;
+            $this->hostinfo = $this->connection->host_info;
         }
 
         function __destruct() {
-            $this->connection->close();
+            if ($this->connection) {
+                $this->connection->close();
+            }
         }
 
+        public function getConnection(){
+            return $this->connection;
+        }
+
+        public function getHostInfo(){
+            return $this->hostinfo;
+        }
+        
+        public function beginTransaction(){
+            return $this->connection->begin_transaction();
+        }
+        
+        public function commit(){
+            return $this->connection->commit();
+        }
+        
+        public function rollback(){
+            return $this->connection->rollback();
+        }
+
+        public function escape($text) {
+            return $this->connection->real_escape_string($text);
+        }
+        
         public function query($query) {
             /*
                 YOUR QUERY
@@ -29,22 +55,74 @@
             return $result;
         }
 
-        public function getAll($tableName) {
+        public function getAll($tableName, $orderBy = null) {
             /*
                 SELECT * FROM $tableName
             */
             $query = "SELECT * FROM " . $tableName;
+            if ($orderBy) {
+                $query = $query . " ORDER BY " . $orderBy;
+            }
+            // print_r($query);
+            // die();
+            $result = $this->connection->query($query);
+            
+            return $result;
+        }
+
+        public function getAllClean($tableName, $clean = true, $orderBy = null) {
+            /*
+                SELECT * FROM $tableName
+            */
+            $query = "SELECT * FROM " . $tableName;
+            if ($clean) {
+                $query = $query . " WHERE deleted_at is null";
+            }
+
+            if ($orderBy) {
+                $query = $query . " ORDER BY " . $orderBy;
+            }
+            // print_r($query);
+            // die();
             $result = $this->connection->query($query);
             
             return $result;
         }
         
-        public function getBy($tableName, $keyWhere, $valueWhere) {
+        public function raw($raw) {
+            // die($raw);
+            $result = $this->connection->query($raw);
+            
+            return $result;
+        }
+        
+        public function getBy($tableName, $keyWhere, $valueWhere, $orderBy = null) {
+            /*
+                SELECT * FROM $tableName
+                WHERE $keyWhere = $valueWhere
+                ORDER BY $orderBy
+            */
+            $query = "SELECT * FROM " . $tableName . " WHERE " . $keyWhere . " = '" . $valueWhere . "'";
+            if ($orderBy) {
+                $query = $query . " ORDER BY " . $orderBy;
+            }
+            $result = $this->connection->query($query);
+            
+            return $result;
+        }
+        
+        public function getOneBy($tableName, $keyWhere, $valueWhere, $orderBy = null, $orderMethod = "ASC") {
             /*
                 SELECT * FROM $tableName
                 WHERE $arrayWhere = $valueWhere
+                ORDER BY $orderBy $orderMethod
+                LIMIT 1
             */
-            $query = "SELECT * FROM " . $tableName . " WHERE " . $keyWhere . " = " . $valueWhere;
+            $query = "SELECT * FROM " . $tableName . " WHERE " . $keyWhere . " = '" . $valueWhere . "'";
+            if ($orderBy) {
+                $query = $query . " ORDER BY " . $orderBy . " " . $orderMethod;
+            }
+            $query = $query . " LIMIT 1";
             $result = $this->connection->query($query);
             
             return $result;
@@ -64,6 +142,7 @@
             $where = substr($where, 0, -5);
             
             $query = "SELECT * FROM " . $tableName . " WHERE " . $where;
+            // die($query);
             $result = $this->connection->query($query);
             
             return $result;
@@ -99,7 +178,6 @@
                     }
                 }
             }
-
             $entry = rtrim($entry, ", ");
             $arrayKeys = array_keys($dataArray);
             
@@ -110,38 +188,24 @@
             $column = rtrim($column, ", ");
             
             $query = "INSERT INTO " . $tableName . " (" . $column . ") VALUES (" . $entry . ")";
+            // print_r($query);
+            // die();
 
-            $queryact = $this->connection->query($query);
-          
             $result = null;
-            
-            if (!$queryact) {
-                $result['status'] = 0;
-                $result['message'] = "Query failed: (" . $this->connection->errno . ") " . $this->connection->error;
-            }else{
+            try {
+                $queryact = $this->connection->query($query);
+                if ($this->connection->error) {
+                    throw new Exception($this->connection->error);
+                }
                 $result['status'] = 1;
                 $result['message'] = "Add successful!";
                 $result['last_id'] = $this->connection->insert_id;
+            } catch (\Throwable $th) {
+                throw new Exception($this->connection->error);
+                // $result['status'] = 0;
+                // $result['message'] = "Query failed: (" . $this->connection->errno . ") " . $this->connection->error;
             }
             
-            return $result;
-        }
-
-        public function delete($tableName, $keyWhere, $valueWhere) {
-            /*
-                DELETE FROM $tableName
-                WHERE $keyWhere = $valueWhere;
-            */
-            $query = "DELETE FROM " . $tableName . " WHERE " . $keyWhere . " = " . $valueWhere;
-            $queryact = $this->connection->query($query);
-
-            if (!$this->connection->affected_rows) {
-                $result['status'] = 0;
-                $result['message'] = "Query failed: (" . $this->connection->errno . ") " . $this->connection->error;
-            }else{
-                $result['status'] = 1;
-                $result['message'] = "Delete successful!";
-            }
             return $result;
         }
 
@@ -179,6 +243,24 @@
                 $result['message'] = "Edit successful!";
             }
             
+            return $result;
+        }
+
+        public function delete($tableName, $keyWhere, $valueWhere) {
+            /*
+                DELETE FROM $tableName
+                WHERE $keyWhere = $valueWhere;
+            */
+            $query = "DELETE FROM " . $tableName . " WHERE " . $keyWhere . " = " . $valueWhere;
+            $queryact = $this->connection->query($query);
+
+            if (!$this->connection->affected_rows) {
+                $result['status'] = 0;
+                $result['message'] = "Query failed: (" . $this->connection->errno . ") " . $this->connection->error;
+            }else{
+                $result['status'] = 1;
+                $result['message'] = "Delete successful!";
+            }
             return $result;
         }
     }

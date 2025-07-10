@@ -1,12 +1,9 @@
 # PHP MySQLi Base
-
-![YouTube Channel Subscribers](https://img.shields.io/youtube/channel/subscribers/UCJNpJE0aWgc1jV1Edz93pmA?style=social)
 ![GitHub followers](https://img.shields.io/github/followers/awanz?style=social)
-[![Chat on Telegram](https://img.shields.io/badge/Chat%20on-Telegram-brightgreen.svg)](https://t.me/awangram)  
 
 ## About
 
-PHP Mysqli Base is My library code for make a easy i code php to connect mysql with mysqli.
+PHP Mysqli Base is library code for make a easy code php to connect mysql with mysqli.
 
 ## Specification
 
@@ -161,7 +158,7 @@ stdClass Object
 
 ## Contribution
 
-Awan
+[Awan](https://awan.awancoder.com)
 
 ## License
 
